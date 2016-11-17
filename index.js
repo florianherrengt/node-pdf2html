@@ -7,6 +7,7 @@ const fs = require('fs');
 const async = require('async');
 
 app.use('/node_modules', express.static(path.join(__dirname, 'node_modules')));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname + '/public/index.html'));
@@ -25,7 +26,7 @@ const upload = multer({
     storage
 });
 
-app.post('/upload', upload.single('pdffile'), (req, res) => {
+app.post('/upload', upload.single('file'), (req, res) => {
     if (!req.file) {
         return res.sendStatus(400);
     }
@@ -46,11 +47,8 @@ app.post('/upload', upload.single('pdffile'), (req, res) => {
                 filepath
             ];
             exec(pdf2htmlEXCmd.join(' '), (errorConvert, stdout, stderr) => {
-                console.log(errorConvert);
-                console.log('stdout: ' + stdout);
-                console.log('stderr: ' + stderr);
-
                 if (errorConvert) {
+                    console.log({ errorConvert });
                     return callback({
                         status: 500,
                         json: { error: errorConvert }
@@ -58,17 +56,19 @@ app.post('/upload', upload.single('pdffile'), (req, res) => {
                 }
 
                 if (stderr) {
-                    return callback({
-                        status: 500,
-                        json: { error: stderr }
-                    });
+                    console.log({ stderr });
+                    // return callback({
+                    //     status: 500,
+                    //     json: { error: stderr }
+                    // });
                 }
+                console.info('Convert done');
                 callback();
             });
         },
         callback => {
             const pdfFilename = filename.substring(0, filename.length - 3) + 'html';
-            fs.readFile(path.join('/tmp/converted', pdfFilename, 'utf8'), (readFileError, file) => {
+            fs.readFile(path.join('/tmp/converted', pdfFilename), 'utf8', (readFileError, file) => {
                 if(readFileError) {
                     return callback({
                         status: 500,
